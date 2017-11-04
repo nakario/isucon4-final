@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 	"log"
 	_ "net/http/pprof"
 
@@ -57,13 +56,23 @@ type BreakdownReport struct {
 	Generations map[string]int `json:"generations"`
 }
 
+type writereq struct {
+	id string
+	str string
+}
+
+type getreq struct {
+	str string
+	ch chan map[string][]ClickLog
+}
+
 var (
 	rd *redis.Client
 	re = regexp.MustCompile("^bytes=(\\d*)-(\\d*)$")
 	r = render2.New()
 	OK = []byte("OK")
-	reqlog = make(chan string, 0)
-	getlog = make(chan map[string][]ClickLog, 0)
+	writelog = make(chan writereq, 1000)
+	reqlog = make(chan getreq, 1000)
 )
 
 func init() {
@@ -379,21 +388,7 @@ func routeGetAdRedirect(w http.ResponseWriter, req *http.Request) {
 	}
 	ua := req.Header.Get("User-Agent")
 
-	path := getLogPath(ad.Advertiser)
-
-	var f *os.File
-	f, err = os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
-	if err != nil {
-		panic(err)
-	}
-
-	err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Fprintf(f, "%s\t%s\t%s\n", ad.Id, isuad, ua)
-	f.Close()
+	writelog <- writereq{ad.Advertiser, fmt.Sprintf("%s\t%s\t%s\n", ad.Id, isuad, ua)}
 
 	http.Redirect(w, req, ad.Destination, http.StatusFound)
 }
@@ -432,7 +427,8 @@ func routeGetReport(w http.ResponseWriter, req *http.Request) {
 		report[ad["id"]] = data
 	}
 
-	reqlog <- advrId
+	getlog := make(chan map[string][]ClickLog, 1)
+	reqlog <- getreq{advrId, getlog}
 	logs := <- getlog
 	for adId, clicks := range logs {
 		if _, exists := report[adId]; !exists {
@@ -477,7 +473,8 @@ func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 		reports[ad["id"]] = data
 	}
 
-	reqlog <- advrId
+	getlog := make(chan map[string][]ClickLog, 1)
+	reqlog <- getreq{advrId, getlog}
 	logs := <- getlog
 
 	for adId, report := range reports {
@@ -524,12 +521,12 @@ func routePostInitialize(w http.ResponseWriter, req *http.Request) {
 func loghandler() {
 	for {
 		select {
-			case id := <- reqlog:
+			case req := <- reqlog:
 
-				path := getLogPath(id)
+				path := getLogPath(req.str)
 				result := map[string][]ClickLog{}
 				if _, err := os.Stat(path); os.IsNotExist(err) {
-					getlog <- result
+					req.ch <- result
 				}
 
 				f, err := os.Open(path)
@@ -557,7 +554,19 @@ func loghandler() {
 					result[ad_id] = append(result[ad_id], data)
 				}
 
-				getlog <- result
+				req.ch <- result
+
+			case req := <- writelog:
+				path := getLogPath(req.id)
+
+				var f *os.File
+				f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+				if err != nil {
+					panic(err)
+				}
+
+				fmt.Fprint(f, req.str)
+				f.Close()
 		}
 	}
 }
