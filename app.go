@@ -509,7 +509,7 @@ func routeGetReport(w http.ResponseWriter, req *http.Request) {
 			logs[ad_id] = []ClickLog{}
 		}
 		data := ClickLog{ad_id, user, agent, gender, age}
-		log.Println("me report data", data)
+		log.Printf("me report data: %+v\n", data)
 		logs[ad_id] = append(logs[ad_id], data)
 	}
 	for adId, clicks := range logs {
@@ -574,7 +574,7 @@ func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 			logs[ad_id] = []ClickLog{}
 		}
 		data := ClickLog{ad_id, user, agent, gender, age}
-		log.Println("report data:", data)
+		log.Printf("report data: %+v\n", data)
 		logs[ad_id] = append(logs[ad_id], data)
 	}
 
