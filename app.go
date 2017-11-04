@@ -605,6 +605,11 @@ func main() {
 
 	router.HandleFunc("/initialize", routePostInitialize).Methods("POST")
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("../public")))
+	router.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log.Println("not found")
+		log.Println("req; ", *req)
+		http.NotFound(w, req)
+	})
 	http.Handle("/", router)
 	http.ListenAndServe(":8080", nil)
 }
