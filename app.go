@@ -490,9 +490,13 @@ func routeGetReport(w http.ResponseWriter, req *http.Request) {
 		report[ad["id"]] = data
 	}
 
-	reports, _ := rd.SMembers(meKey(advrId)).Result()
+	reports, err := rd.SMembers(meKey(advrId)).Result()
+	if err != nil {
+		log.Println("members err", err)
+	}
 	logs := map[string][]ClickLog{}
 	for _, report := range reports {
+		log.Println("me report: ", report)
 		sp := strings.Split(report, "\t")
 		ad_id := sp[0]
 		user := sp[1]
@@ -505,6 +509,7 @@ func routeGetReport(w http.ResponseWriter, req *http.Request) {
 			logs[ad_id] = []ClickLog{}
 		}
 		data := ClickLog{ad_id, user, agent, gender, age}
+		log.Println("me report data", data)
 		logs[ad_id] = append(logs[ad_id], data)
 	}
 	for adId, clicks := range logs {
@@ -550,9 +555,13 @@ func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 		reports[ad["id"]] = data
 	}
 
-	reports2, _ := rd.SMembers(meKey(advrId)).Result()
+	reports2, err := rd.SMembers(meKey(advrId)).Result()
+	if err != nil {
+		log.Println("members err", err)
+	}
 	logs := map[string][]ClickLog{}
 	for _, report := range reports2 {
+		log.Println("report: ", report)
 		sp := strings.Split(report, "\t")
 		ad_id := sp[0]
 		user := sp[1]
@@ -565,6 +574,7 @@ func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 			logs[ad_id] = []ClickLog{}
 		}
 		data := ClickLog{ad_id, user, agent, gender, age}
+		log.Println("report data:", data)
 		logs[ad_id] = append(logs[ad_id], data)
 	}
 
