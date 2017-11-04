@@ -556,7 +556,7 @@ func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 		reports[ad["id"]] = data
 	}
 
-	lenght, _ := rd.LLen(mekey(advrId)).Result()
+	lenght, _ := rd.LLen(meKey(advrId)).Result()
 	reports2, err := rd.LRange(meKey(advrId), 0, lenght).Result()
 	if err != nil {
 		log.Println("members err", err)
