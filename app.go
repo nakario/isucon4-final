@@ -513,6 +513,8 @@ func routePostInitialize(w http.ResponseWriter, req *http.Request) {
 	}
 	path := getDir("log")
 	os.RemoveAll(path)
+	os.RemoveAll("/home/isucon/assets/")
+	os.MkdirAll("/home/isucon/assets/", 0777)
 
 	w.WriteHeader(200)
 	w.Write(OK)
