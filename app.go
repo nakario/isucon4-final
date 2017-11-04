@@ -77,7 +77,7 @@ var (
 
 func init() {
 	rd = redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: "webapp3:6379",
 		DB:   0,
 	})
 }
