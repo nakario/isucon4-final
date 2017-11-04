@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"log"
 	"net/http/pprof"
 
 	"github.com/go-martini/martini"
@@ -242,6 +243,7 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 
 	req.ParseMultipartForm(100 << 20)
 	asset := req.MultipartForm.File["asset"][0]
+	log.Println("asset.Size:", asset.Size)
 	id := nextAdId()
 	key := adKey(slot, id)
 
