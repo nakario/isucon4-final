@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	render2 "github.com/unrolled/render"
 	"golang.org/x/sync/singleflight"
+	"github.com/NYTimes/gziphandler"
 )
 
 type Ad struct {
@@ -599,7 +600,7 @@ func main() {
 	slots.HandleFunc("/ads", routePostAd).Methods("POST")
 	slots.HandleFunc("/ad", routeGetAd).Methods("GET")
 	slots.HandleFunc("/ads/{id}", routeGetAdWithId).Methods("GET")
-	slots.HandleFunc("/ads/{id}/asset", routeGetAdAsset).Methods("GET")
+	slots.Handle("/ads/{id}/asset", gziphandler.GzipHandler(http.HandlerFunc(routeGetAdAsset))).Methods("GET")
 	slots.HandleFunc("/ads/{id}/count", routeGetAdCount).Methods("POST")
 	slots.HandleFunc("/ads/{id}/redirect", routeGetAdRedirect).Methods("GET")
 
