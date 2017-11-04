@@ -348,7 +348,11 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", content_type)
-	data, _ := ioutil.ReadFile("/home/isucon/assets/" + slot + "/" + id)
+	data, err := ioutil.ReadFile("/home/isucon/assets/" + slot + "/" + id)
+	if err != nil {
+		log.Println("readfile err", err)
+		return
+	}
 
 	log.Println("data len:", len(data))
 
