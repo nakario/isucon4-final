@@ -527,6 +527,7 @@ func loghandler() {
 				result := map[string][]ClickLog{}
 				if _, err := os.Stat(path); os.IsNotExist(err) {
 					req.ch <- result
+					continue
 				}
 
 				f, err := os.Open(path)
