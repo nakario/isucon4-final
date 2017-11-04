@@ -551,7 +551,6 @@ func loghandler() {
 				if err != nil {
 					panic(err)
 				}
-				defer f.Close()
 
 				scanner := bufio.NewScanner(f)
 				for scanner.Scan() {
@@ -571,6 +570,7 @@ func loghandler() {
 					data := ClickLog{ad_id, user, agent, gender, age}
 					result[ad_id] = append(result[ad_id], data)
 				}
+				f.Close()
 
 				req.ch <- result
 
