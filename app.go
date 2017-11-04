@@ -279,7 +279,7 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 		log.Println("Failed to parse url", err)
 		return
 	}
-	log.Println("put to " + url.URL.String())
+	log.Println("put to " + URL.String())
 
 	b := []byte{}
 	buf := bytes.NewBuffer(b)
