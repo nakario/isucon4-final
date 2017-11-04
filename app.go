@@ -264,8 +264,10 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 
 	var host string
 	if req.Host == "webapp1" {
+		log.Println("put 1 to 2")
 		host = "webapp2"
 	} else if req.Host == "webapp2" {
+		log.Println("put 2 to 1")
 		host = "webapp1"
 	} else {
 		log.Println("unexpected host: " + req.Host)
@@ -277,16 +279,22 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 		log.Println("Failed to parse url", err)
 		return
 	}
+	log.Println("put to " + url.URL.String())
 
-	buf := bytes.NewBuffer(nil)
+	b := []byte{}
+	buf := bytes.NewBuffer(b)
 	io.Copy(buf, f)
+	log.Println("put len:", len(b))
 
 	req2 := http.Request{
 		Method: http.MethodPut,
 		URL: URL,
 		Body: ioutil.NopCloser(buf),
 	}
-	http.DefaultClient.Do(&req2)
+	_, err = http.DefaultClient.Do(&req2)
+	if err != nil {
+		fmt.Println("put err", err)
+	}
 
 	rd.RPush(slotKey(slot), id)
 	rd.SAdd(advertiserKey(advrId), key)
