@@ -310,7 +310,22 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", content_type)
-	data, _ := ioutil.ReadFile("/home/isucon/assets/" + slot + "/" + id)
+	data, err := ioutil.ReadFile("/home/isucon/assets/" + slot + "/" + id)
+	if os.IsNotExist(err) {
+		log.Println("Redirect from " + req.Host + " to another")
+		if req.Host == "webapp1" {
+			http.Redirect(w, req, "webapp2/slots/" + slot + "/ads/" + id + "/asset", http.StatusMovedPermanently)
+			return
+		} else if req.Host == "webapp2" {
+			http.Redirect(w, req, "webapp2/slots/" + slot + "/ads/" + id + "/asset", http.StatusMovedPermanently)
+			return
+		} else {
+			log.Println("routeGetAdAsset 404")
+			log.Println("slot/id: " + slot + "/" + id)
+			r.JSON(w,404, map[string]string{"error": "not_found"})
+			return
+		}
+	}
 
 	range_str := req.Header.Get("Range")
 	if range_str == "" {
