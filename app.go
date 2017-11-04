@@ -16,6 +16,8 @@ import (
 	"github.com/gorilla/mux"
 	render2 "github.com/unrolled/render"
 	"io/ioutil"
+	"bytes"
+	"net/url"
 )
 
 type Ad struct {
@@ -259,6 +261,32 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 	out, _ := os.Create("/home/isucon/assets/" + slot + "/" + id)
 	defer out.Close()
 	io.Copy(out, f)
+
+	var host string
+	if req.Host == "webapp1" {
+		host = "webapp2"
+	} else if req.Host == "webapp2" {
+		host = "webapp1"
+	} else {
+		log.Println("unexpected host: " + req.Host)
+		return
+	}
+
+	URL, err := url.Parse(host + ":" + "10001" + "/" + slot + "/" + id)
+	if err != nil {
+		log.Println("Failed to parse url", err)
+		return
+	}
+
+	buf := bytes.NewBuffer(nil)
+	io.Copy(buf, f)
+
+	req2 := http.Request{
+		Method: http.MethodPut,
+		URL: URL,
+		Body: ioutil.NopCloser(buf),
+	}
+	http.DefaultClient.Do(&req2)
 
 	rd.RPush(slotKey(slot), id)
 	rd.SAdd(advertiserKey(advrId), key)
@@ -587,6 +615,7 @@ func loghandler() {
 }
 
 func main() {
+	log.Println("started")
 	go loghandler()
 
 	router := mux.NewRouter()
