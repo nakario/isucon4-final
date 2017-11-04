@@ -559,7 +559,7 @@ func routePostInitialize(w http.ResponseWriter, req *http.Request) {
 func main() {
 	router := mux.NewRouter()
 
-	slots := router.PathPrefix("/slots/:slot").Subrouter()
+	slots := router.PathPrefix("/slots/{slot}").Subrouter()
 	slots.HandleFunc("/ads", routePostAd).Methods("POST")
 	slots.HandleFunc("/ad", routeGetAd).Methods("GET")
 	slots.HandleFunc("/ads/{id}", routeGetAdWithId).Methods("GET")
