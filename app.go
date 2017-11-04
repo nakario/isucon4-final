@@ -260,7 +260,14 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 	os.MkdirAll("/home/isucon/assets/" + slot, 0777)
 	out, _ := os.Create("/home/isucon/assets/" + slot + "/" + id)
 	defer out.Close()
-	io.Copy(out, f)
+	bs, err := ioutil.ReadAll(f)
+	if err != nil {
+		log.Println("read all err", err)
+		return
+	}
+	log.Println("asset size:", len(bs))
+	io.Copy(out, bytes.NewReader(bs))
+	log.Println("after copy size:", len(bs))
 
 	var host string
 	if req.Host == "webapp1" {
@@ -283,7 +290,7 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 
 	b := []byte{}
 	buf := bytes.NewBuffer(b)
-	io.Copy(buf, f)
+	io.Copy(buf, bytes.NewReader(bs))
 	log.Println("put len:", len(b))
 
 	req2 := http.Request{
