@@ -301,6 +301,7 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", content_type)
+	os.MkdirAll("/home/isucon/assets/" + slot, 0777)
 	data, _ := ioutil.ReadFile("/home/isucon/assets/" + slot + "/" + id)
 
 	range_str := req.Header.Get("Range")
