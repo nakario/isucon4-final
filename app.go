@@ -68,7 +68,8 @@ type getreq struct {
 }
 
 var (
-	rd *redis.Client
+	rdread *redis.Client
+	rdwrite *redis.Client
 	re = regexp.MustCompile("^bytes=(\\d*)-(\\d*)$")
 	r = render2.New()
 	OK = []byte("OK")
@@ -78,9 +79,13 @@ var (
 )
 
 func init() {
-	rd = redis.NewClient(&redis.Options{
+	rdread = redis.NewClient(&redis.Options{
 		Addr: "webapp3:6379",
 		DB:   0,
+	})
+	rdwrite = redis.NewClient(&redis.Options{
+		Addr: "webapp3:6380",
+		DB:	  0,
 	})
 }
 
@@ -137,13 +142,13 @@ func slotKey(slot string) string {
 }
 
 func nextAdId() string {
-	id, _ := rd.Incr("isu4:ad-next").Result()
+	id, _ := rdwrite.Incr("isu4:ad-next").Result()
 	return strconv.FormatInt(id, 10)
 }
 
 func nextAd(req *http.Request, slot string) *AdWithEndpoints {
 	key := slotKey(slot)
-	id, _ := rd.RPopLPush(key, key).Result()
+	id, _ := rdwrite.RPopLPush(key, key).Result()
 	if id == "" {
 		return nil
 	}
@@ -151,14 +156,14 @@ func nextAd(req *http.Request, slot string) *AdWithEndpoints {
 	if ad != nil {
 		return ad
 	} else {
-		rd.LRem(key, 0, id).Result()
+		rdwrite.LRem(key, 0, id).Result()
 		return nextAd(req, slot)
 	}
 }
 
 func getAd(req *http.Request, slot string, id string) *AdWithEndpoints {
 	key := adKey(slot, id)
-	m, _ := rd.HGetAll(key).Result()
+	m, _ := rdread.HGetAll(key).Result()
 
 	if m == nil {
 		return nil
@@ -243,7 +248,7 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 		destination = a[0]
 	}
 
-	rd.HMSet(key, map[string]interface{}{
+	rdwrite.HMSet(key, map[string]interface{}{
 		"slot": slot,
 		"id": id,
 		"title": title,
@@ -259,9 +264,9 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 	io.Copy(buf, f)
 	asset_data := string(buf.Bytes())
 
-	rd.Set(assetKey(slot, id), asset_data, 0)
-	rd.RPush(slotKey(slot), id)
-	rd.SAdd(advertiserKey(advrId), key)
+	rdwrite.Set(assetKey(slot, id), asset_data, 0)
+	rdwrite.RPush(slotKey(slot), id)
+	rdwrite.SAdd(advertiserKey(advrId), key)
 
 	r.JSON(w,200, getAd(req, slot, id))
 }
@@ -305,7 +310,7 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", content_type)
 	v, err, _ := sf.Do(assetKey(slot, id), func() (interface{}, error){
-		data, err := rd.Get(assetKey(slot, id)).Bytes()
+		data, err := rdread.Get(assetKey(slot, id)).Bytes()
 		return data, err
 	})
 	if err != nil {
@@ -368,13 +373,13 @@ func routeGetAdCount(w http.ResponseWriter, req *http.Request) {
 	id := params["id"]
 	key := adKey(slot, id)
 
-	_, err := rd.Exists(key).Result()
+	_, err := rdread.Exists(key).Result()
 	if err == redis.Nil {
 		r.JSON(w, 404, map[string]string{"error": "not_found"})
 		return
 	}
 
-	rd.HIncrBy(key, "impressions", 1).Result()
+	rdwrite.HIncrBy(key, "impressions", 1).Result()
 	w.WriteHeader(204)
 }
 
@@ -414,9 +419,9 @@ func routeGetReport(w http.ResponseWriter, req *http.Request) {
 	}
 
 	report := map[string]*Report{}
-	adKeys, _ := rd.SMembers(advertiserKey(advrId)).Result()
+	adKeys, _ := rdread.SMembers(advertiserKey(advrId)).Result()
 	for _, adKey := range adKeys {
-		ad, _ := rd.HGetAll(adKey).Result()
+		ad, _ := rdread.HGetAll(adKey).Result()
 		if ad == nil {
 			continue
 		}
@@ -460,9 +465,9 @@ func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 	}
 
 	reports := map[string]*Report{}
-	adKeys, _ := rd.SMembers(advertiserKey(advrId)).Result()
+	adKeys, _ := rdread.SMembers(advertiserKey(advrId)).Result()
 	for _, adKey := range adKeys {
-		ad, _ := rd.HGetAll(adKey).Result()
+		ad, _ := rdread.HGetAll(adKey).Result()
 		if ad == nil {
 			continue
 		}
@@ -518,10 +523,10 @@ func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 }
 
 func routePostInitialize(w http.ResponseWriter, req *http.Request) {
-	keys, _ := rd.Keys("isu4:*").Result()
+	keys, _ := rdread.Keys("isu4:*").Result()
 	for i := range keys {
 		key := keys[i]
-		rd.Del(key)
+		rdwrite.Del(key)
 	}
 	path := getDir("log")
 	os.RemoveAll(path)
