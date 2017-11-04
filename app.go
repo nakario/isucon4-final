@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"net/http/pprof"
 
 	"github.com/go-martini/martini"
 	"github.com/go-redis/redis"
@@ -549,6 +550,16 @@ func main() {
 	m.Use(render.Renderer(render.Options{
 		Layout: "layout",
 	}))
+
+	m.Get("/debug/pprof", pprof.Index)
+	m.Get("/debug/pprof/cmdline", pprof.Cmdline)
+	m.Get("/debug/pprof/profile", pprof.Profile)
+	m.Get("/debug/pprof/symbol", pprof.Symbol)
+	m.Post("/debug/pprof/symbol", pprof.Symbol)
+	m.Get("/debug/pprof/block", pprof.Handler("block").ServeHTTP)
+	m.Get("/debug/pprof/heap", pprof.Handler("heap").ServeHTTP)
+	m.Get("/debug/pprof/goroutine", pprof.Handler("goroutine").ServeHTTP)
+	m.Get("/debug/pprof/threadcreate", pprof.Handler("threadcreate").ServeHTTP)
 
 	m.Group("/slots/:slot", func(r martini.Router) {
 		m.Post("/ads", routePostAd)
