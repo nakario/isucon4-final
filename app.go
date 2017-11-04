@@ -16,6 +16,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	render2 "github.com/unrolled/render"
+	"golang.org/x/sync/singleflight"
 )
 
 type Ad struct {
@@ -73,6 +74,7 @@ var (
 	OK = []byte("OK")
 	writelog = make(chan writereq, 1000)
 	reqlog = make(chan getreq, 1000)
+	sf singleflight.Group
 )
 
 func init() {
@@ -302,7 +304,17 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", content_type)
-	data, _ := rd.Get(assetKey(slot, id)).Bytes()
+	v, err, _ := sf.Do(assetKey(slot, id), func() (interface{}, error){
+		data, err := rd.Get(assetKey(slot, id)).Bytes()
+		return data, err
+	})
+	if err != nil {
+		panic("singleflight err" + err.Error())
+	}
+	data, ok := v.([]byte)
+	if !ok {
+		panic("data is not []byte")
+	}
 
 	range_str := req.Header.Get("Range")
 	if range_str == "" {
