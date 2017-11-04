@@ -211,6 +211,8 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 
 	advrId := advertiserId(req)
 	if advrId == "" {
+		log.Println("routePostAdd 404")
+		log.Println("slot: " + slot)
 		w.WriteHeader(404)
 		return
 	}
@@ -271,6 +273,8 @@ func routeGetAd(w http.ResponseWriter, req *http.Request) {
 	if ad != nil {
 		http.Redirect(w, req, "/slots/" + slot + "/ads/" + ad.Id, http.StatusFound)
 	} else {
+		log.Println("routeGetAd 404")
+		log.Println("slot: " + slot)
 		r.JSON(w,404, map[string]string{"error": "not_found"})
 	}
 }
@@ -283,6 +287,8 @@ func routeGetAdWithId(w http.ResponseWriter, req *http.Request) {
 	if ad != nil {
 		r.JSON(w,200, ad)
 	} else {
+		log.Println("routeGetAdWithId 404")
+		log.Println("slot/id: " + slot + "/" + id)
 		r.JSON(w,404, map[string]string{"error": "not_found"})
 	}
 }
@@ -293,6 +299,8 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	id := params["id"]
 	ad := getAd(req, slot, id)
 	if ad == nil {
+		log.Println("routeGetAdAsset 404")
+		log.Println("slot/id: " + slot + "/" + id)
 		r.JSON(w,404, map[string]string{"error": "not_found"})
 		return
 	}
@@ -358,6 +366,8 @@ func routeGetAdCount(w http.ResponseWriter, req *http.Request) {
 
 	_, err := rd.Exists(key).Result()
 	if err == redis.Nil {
+		log.Println("routeGetAdCount 404")
+		log.Println("slot/id: " + slot + "/" + id)
 		r.JSON(w, 404, map[string]string{"error": "not_found"})
 		return
 	}
@@ -373,6 +383,8 @@ func routeGetAdRedirect(w http.ResponseWriter, req *http.Request) {
 	ad := getAd(req, slot, id)
 
 	if ad == nil {
+		log.Println("routeGetAdRedirect 404")
+		log.Println("slot/id: " + slot + "/" + id)
 		r.JSON(w, 404, map[string]string{"error": "not_found"})
 		return
 	}
