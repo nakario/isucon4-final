@@ -268,16 +268,12 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 		log.Println("read all err", err)
 		return
 	}
-	log.Println("asset size:", len(bs))
 	io.Copy(out, bytes.NewReader(bs))
-	log.Println("after copy size:", len(bs))
 
 	var host string
 	if req.Host == "webapp1" {
-		log.Println("put 1 to 2")
 		host = "webapp2"
 	} else if req.Host == "webapp2" {
-		log.Println("put 2 to 1")
 		host = "webapp1"
 	} else {
 		log.Println("unexpected host: " + req.Host)
@@ -359,8 +355,6 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Println("data len:", len(data))
-
 	range_str := req.Header.Get("Range")
 	if range_str == "" {
 		r.Data(w,200, data)
@@ -403,8 +397,6 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	content_range := fmt.Sprintf("bytes %d-%d/%d", head, tail, len(data))
 	w.Header().Set("Content-Range", content_range)
 	w.Header().Set("Content-Length", strconv.Itoa(len(range_data)))
-
-	log.Println("range_data len:", len(range_data))
 
 	r.Data(w, 206, range_data)
 }
@@ -497,7 +489,6 @@ func routeGetReport(w http.ResponseWriter, req *http.Request) {
 	}
 	logs := map[string][]ClickLog{}
 	for _, report := range reports {
-		log.Println("me report: ", report)
 		sp := strings.Split(report, "\t")
 		ad_id := sp[0]
 		user := sp[1]
@@ -510,7 +501,6 @@ func routeGetReport(w http.ResponseWriter, req *http.Request) {
 			logs[ad_id] = []ClickLog{}
 		}
 		data := ClickLog{ad_id, user, agent, gender, age}
-		log.Printf("me report data: %+v\n", data)
 		logs[ad_id] = append(logs[ad_id], data)
 	}
 	for adId, clicks := range logs {
@@ -563,7 +553,6 @@ func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 	}
 	logs := map[string][]ClickLog{}
 	for _, report := range reports2 {
-		log.Println("report: ", report)
 		sp := strings.Split(report, "\t")
 		ad_id := sp[0]
 		user := sp[1]
@@ -576,7 +565,6 @@ func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 			logs[ad_id] = []ClickLog{}
 		}
 		data := ClickLog{ad_id, user, agent, gender, age}
-		log.Printf("report data: %+v\n", data)
 		logs[ad_id] = append(logs[ad_id], data)
 	}
 
