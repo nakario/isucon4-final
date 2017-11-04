@@ -3,24 +3,24 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
-	"log"
-	_ "net/http/pprof"
 
+	"bytes"
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	render2 "github.com/unrolled/render"
 	"io/ioutil"
-	"bytes"
 	"net/url"
 	"time"
 )
 
-const sleeptime = 500 * time.Millisecond
+const sleeptime = 10 * time.Millisecond
 
 type Ad struct {
 	Slot        string `json:"slot"`
@@ -61,19 +61,19 @@ type BreakdownReport struct {
 }
 
 type writereq struct {
-	id string
+	id  string
 	str string
 }
 
 type getreq struct {
 	str string
-	ch chan map[string][]ClickLog
+	ch  chan map[string][]ClickLog
 }
 
 var (
 	rd *redis.Client
 	re = regexp.MustCompile("^bytes=(\\d*)-(\\d*)$")
-	r = render2.New()
+	r  = render2.New()
 	OK = []byte("OK")
 )
 
@@ -237,11 +237,11 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 	}
 
 	rd.HMSet(key, map[string]interface{}{
-		"slot": slot,
-		"id": id,
-		"title": title,
-		"type": content_type,
-		"advertiser": advrId,
+		"slot":        slot,
+		"id":          id,
+		"title":       title,
+		"type":        content_type,
+		"advertiser":  advrId,
 		"destination": destination,
 		"impressions": "0",
 	})
@@ -252,11 +252,11 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Println("chmod failed", err)
 	}
-	err = os.MkdirAll("/home/isucon/assets/" + slot, 0777)
+	err = os.MkdirAll("/home/isucon/assets/"+slot, 0777)
 	if err != nil {
 		log.Println("failed to mkdirall", err)
 	}
-	err = os.Chmod("/home/isucon/assets/" + slot, 0777)
+	err = os.Chmod("/home/isucon/assets/"+slot, 0777)
 	if err != nil {
 		log.Println("failed to chmod", err)
 	}
@@ -291,8 +291,8 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 
 	req2 := http.Request{
 		Method: http.MethodPut,
-		URL: URL,
-		Body: ioutil.NopCloser(bytes.NewReader(bs)),
+		URL:    URL,
+		Body:   ioutil.NopCloser(bytes.NewReader(bs)),
 	}
 	_, err = http.DefaultClient.Do(&req2)
 	if err != nil {
@@ -302,7 +302,7 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 	rd.RPush(slotKey(slot), id)
 	rd.SAdd(advertiserKey(advrId), key)
 
-	r.JSON(w,200, getAd(req, slot, id))
+	r.JSON(w, 200, getAd(req, slot, id))
 
 	time.Sleep(sleeptime)
 }
@@ -312,11 +312,11 @@ func routeGetAd(w http.ResponseWriter, req *http.Request) {
 	slot := params["slot"]
 	ad := nextAd(req, slot)
 	if ad != nil {
-		http.Redirect(w, req, "/slots/" + slot + "/ads/" + ad.Id, http.StatusFound)
+		http.Redirect(w, req, "/slots/"+slot+"/ads/"+ad.Id, http.StatusFound)
 	} else {
 		log.Println("routeGetAd 404")
 		log.Println("slot: " + slot)
-		r.JSON(w,404, map[string]string{"error": "not_found"})
+		r.JSON(w, 404, map[string]string{"error": "not_found"})
 	}
 }
 
@@ -326,11 +326,11 @@ func routeGetAdWithId(w http.ResponseWriter, req *http.Request) {
 	id := params["id"]
 	ad := getAd(req, slot, id)
 	if ad != nil {
-		r.JSON(w,200, ad)
+		r.JSON(w, 200, ad)
 	} else {
 		log.Println("routeGetAdWithId 404")
 		log.Println("slot/id: " + slot + "/" + id)
-		r.JSON(w,404, map[string]string{"error": "not_found"})
+		r.JSON(w, 404, map[string]string{"error": "not_found"})
 	}
 }
 
@@ -342,7 +342,7 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	if ad == nil {
 		log.Println("routeGetAdAsset 404")
 		log.Println("slot/id: " + slot + "/" + id)
-		r.JSON(w,404, map[string]string{"error": "not_found"})
+		r.JSON(w, 404, map[string]string{"error": "not_found"})
 		return
 	}
 	content_type := "application/octet-stream"
@@ -359,7 +359,7 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 
 	range_str := req.Header.Get("Range")
 	if range_str == "" {
-		r.Data(w,200, data)
+		r.Data(w, 200, data)
 		return
 	}
 
