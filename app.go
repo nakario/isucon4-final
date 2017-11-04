@@ -325,11 +325,11 @@ func routeGetAdAsset(r render.Render, res http.ResponseWriter, req *http.Request
 	}
 
 	res.Header().Set("Content-Type", content_type)
-	data, _ := rd.Get(assetKey(slot, id)).Result()
+	data, _ := rd.Get(assetKey(slot, id)).Bytes()
 
 	range_str := req.Header.Get("Range")
 	if range_str == "" {
-		r.Data(200, []byte(data))
+		r.Data(200, data)
 		return
 	}
 
@@ -370,7 +370,7 @@ func routeGetAdAsset(r render.Render, res http.ResponseWriter, req *http.Request
 	res.Header().Set("Content-Range", content_range)
 	res.Header().Set("Content-Length", strconv.Itoa(len(range_data)))
 
-	r.Data(206, []byte(range_data))
+	r.Data(206, range_data)
 }
 
 func routeGetAdCount(r render.Render, params martini.Params) {
