@@ -530,6 +530,7 @@ func routePostInitialize(w http.ResponseWriter, req *http.Request) {
 	}
 	path := getDir("log")
 	os.RemoveAll(path)
+	sf = singleflight.Group{}
 
 	w.WriteHeader(200)
 	w.Write(OK)
