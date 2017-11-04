@@ -240,7 +240,7 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 		return
 	}
 
-	req.ParseMultipartForm(100000)
+	req.ParseMultipartForm(100 << 20)
 	asset := req.MultipartForm.File["asset"][0]
 	id := nextAdId()
 	key := adKey(slot, id)
