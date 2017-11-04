@@ -281,7 +281,7 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	URL, err := url.Parse(host + ":" + "10001" + "/" + slot + "/" + id)
+	URL, err := url.Parse("http://" + host + ":" + "10001" + "/" + slot + "/" + id)
 	if err != nil {
 		log.Println("Failed to parse url", err)
 		return
