@@ -350,6 +350,8 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", content_type)
 	data, _ := ioutil.ReadFile("/home/isucon/assets/" + slot + "/" + id)
 
+	log.Println("data len:", len(data))
+
 	range_str := req.Header.Get("Range")
 	if range_str == "" {
 		r.Data(w,200, data)
@@ -392,6 +394,8 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	content_range := fmt.Sprintf("bytes %d-%d/%d", head, tail, len(data))
 	w.Header().Set("Content-Range", content_range)
 	w.Header().Set("Content-Length", strconv.Itoa(len(range_data)))
+
+	log.Println("range_data len:", len(range_data))
 
 	r.Data(w, 206, range_data)
 }
