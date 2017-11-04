@@ -288,15 +288,10 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 	}
 	log.Println("put to " + URL.String())
 
-	b := []byte{}
-	buf := bytes.NewBuffer(b)
-	io.Copy(buf, bytes.NewReader(bs))
-	log.Println("put len:", len(b))
-
 	req2 := http.Request{
 		Method: http.MethodPut,
 		URL: URL,
-		Body: ioutil.NopCloser(buf),
+		Body: ioutil.NopCloser(bytes.NewReader(bs)),
 	}
 	_, err = http.DefaultClient.Do(&req2)
 	if err != nil {
