@@ -56,7 +56,10 @@ type BreakdownReport struct {
 	Generations map[string]int `json:"generations"`
 }
 
-var rd *redis.Client
+var (
+	rd *redis.Client
+	re = regexp.MustCompile("^bytes=(\\d*)-(\\d*)$")
+)
 
 func init() {
 	rd = redis.NewClient(&redis.Options{
@@ -328,7 +331,6 @@ func routeGetAdAsset(r render.Render, res http.ResponseWriter, req *http.Request
 		return
 	}
 
-	re := regexp.MustCompile("^bytes=(\\d*)-(\\d*)$")
 	m := re.FindAllStringSubmatch(range_str, -1)
 
 	if m == nil {
