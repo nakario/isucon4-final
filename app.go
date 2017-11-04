@@ -317,7 +317,7 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 			http.Redirect(w, req, "webapp2/slots/" + slot + "/ads/" + id + "/asset", http.StatusMovedPermanently)
 			return
 		} else if req.Host == "webapp2" {
-			http.Redirect(w, req, "webapp2/slots/" + slot + "/ads/" + id + "/asset", http.StatusMovedPermanently)
+			http.Redirect(w, req, "webapp1/slots/" + slot + "/ads/" + id + "/asset", http.StatusMovedPermanently)
 			return
 		} else {
 			log.Println("routeGetAdAsset 404")
