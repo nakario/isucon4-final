@@ -18,6 +18,7 @@ import (
 	"io/ioutil"
 	"bytes"
 	"net/url"
+	"time"
 )
 
 type Ad struct {
@@ -258,7 +259,11 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 
 	f, _ := asset.Open()
 	defer f.Close()
-	err := os.MkdirAll("/home/isucon/assets/" + slot, 0777)
+	err := os.Chmod("/home/isucon/assets/", 0777)
+	if err != nil {
+		log.Println("chmod failed", err)
+	}
+	err = os.MkdirAll("/home/isucon/assets/" + slot, 0777)
 	if err != nil {
 		log.Println("failed to mkdirall", err)
 	}
@@ -313,6 +318,8 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 	rd.SAdd(advertiserKey(advrId), key)
 
 	r.JSON(w,200, getAd(req, slot, id))
+
+	time.Sleep(3 * time.Second)
 }
 
 func routeGetAd(w http.ResponseWriter, req *http.Request) {
