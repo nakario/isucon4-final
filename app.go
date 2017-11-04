@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"net/http"
@@ -74,8 +73,6 @@ var (
 	re = regexp.MustCompile("^bytes=(\\d*)-(\\d*)$")
 	r = render2.New()
 	OK = []byte("OK")
-	writelog = make(chan writereq, 1000)
-	reqlog = make(chan getreq, 1000)
 )
 
 func init() {
@@ -83,17 +80,6 @@ func init() {
 		Addr: "webapp3:6379",
 		DB:   0,
 	})
-}
-
-func getDir(name string) string {
-	base_dir := "/tmp/go/"
-	path := base_dir + name
-	os.MkdirAll(path, 0777)
-	err := os.Chmod(path, 0777)
-	if err != nil {
-		log.Println("fail chmod", err)
-	}
-	return path
 }
 
 func urlFor(req *http.Request, path string) string {
@@ -139,6 +125,10 @@ func advertiserKey(id string) string {
 
 func slotKey(slot string) string {
 	return "isu4:slot:" + slot
+}
+
+func meKey(id string) string {
+	return "isu4:me:" + id
 }
 
 func nextAdId() string {
@@ -204,12 +194,6 @@ func decodeUserKey(id string) (string, int) {
 	age, _ := strconv.Atoi(splitted[1])
 
 	return gender, age
-}
-
-func getLogPath(advrId string) string {
-	dir := getDir("log")
-	splitted := strings.Split(advrId, "/")
-	return dir + "/" + splitted[len(splitted)-1]
 }
 
 func routePostAd(w http.ResponseWriter, req *http.Request) {
@@ -467,7 +451,7 @@ func routeGetAdRedirect(w http.ResponseWriter, req *http.Request) {
 	}
 	ua := req.Header.Get("User-Agent")
 
-	writelog <- writereq{ad.Advertiser, fmt.Sprintf("%s\t%s\t%s\n", ad.Id, isuad, ua)}
+	rd.SAdd(meKey(ad.Advertiser), fmt.Sprintf("%s\t%s\t%s", ad.Id, isuad, ua))
 
 	http.Redirect(w, req, ad.Destination, http.StatusFound)
 }
@@ -506,9 +490,23 @@ func routeGetReport(w http.ResponseWriter, req *http.Request) {
 		report[ad["id"]] = data
 	}
 
-	getlog := make(chan map[string][]ClickLog, 1)
-	reqlog <- getreq{advrId, getlog}
-	logs := <- getlog
+	reports, _ := rd.SMembers(meKey(advrId)).Result()
+	logs := map[string][]ClickLog{}
+	for _, report := range reports {
+		sp := strings.Split(report, "\t")
+		ad_id := sp[0]
+		user := sp[1]
+		agent := sp[2]
+		if agent == "" {
+			agent = "unknown"
+		}
+		gender, age := decodeUserKey(sp[1])
+		if logs[ad_id] == nil {
+			logs[ad_id] = []ClickLog{}
+		}
+		data := ClickLog{ad_id, user, agent, gender, age}
+		logs[ad_id] = append(logs[ad_id], data)
+	}
 	for adId, clicks := range logs {
 		if _, exists := report[adId]; !exists {
 			report[adId] = &Report{}
@@ -552,9 +550,23 @@ func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 		reports[ad["id"]] = data
 	}
 
-	getlog := make(chan map[string][]ClickLog, 1)
-	reqlog <- getreq{advrId, getlog}
-	logs := <- getlog
+	reports2, _ := rd.SMembers(meKey(advrId)).Result()
+	logs := map[string][]ClickLog{}
+	for _, report := range reports2 {
+		sp := strings.Split(report, "\t")
+		ad_id := sp[0]
+		user := sp[1]
+		agent := sp[2]
+		if agent == "" {
+			agent = "unknown"
+		}
+		gender, age := decodeUserKey(sp[1])
+		if logs[ad_id] == nil {
+			logs[ad_id] = []ClickLog{}
+		}
+		data := ClickLog{ad_id, user, agent, gender, age}
+		logs[ad_id] = append(logs[ad_id], data)
+	}
 
 	for adId, report := range reports {
 		log, exists := logs[adId]
@@ -590,8 +602,6 @@ func routePostInitialize(w http.ResponseWriter, req *http.Request) {
 		key := keys[i]
 		rd.Del(key)
 	}
-	path := getDir("log")
-	os.RemoveAll(path)
 	os.RemoveAll("/home/isucon/assets/")
 	os.MkdirAll("/home/isucon/assets/", 0777)
 	err := os.Chmod("/home/isucon/assets/", 0777)
@@ -603,63 +613,8 @@ func routePostInitialize(w http.ResponseWriter, req *http.Request) {
 	w.Write(OK)
 }
 
-func loghandler() {
-	for {
-		select {
-			case req := <- reqlog:
-
-				path := getLogPath(req.str)
-				result := map[string][]ClickLog{}
-				if _, err := os.Stat(path); os.IsNotExist(err) {
-					req.ch <- result
-					continue
-				}
-
-				f, err := os.Open(path)
-				if err != nil {
-					panic(err)
-				}
-				defer f.Close()
-
-				scanner := bufio.NewScanner(f)
-				for scanner.Scan() {
-					line := scanner.Text()
-					line = strings.TrimRight(line, "\n")
-					sp := strings.Split(line, "\t")
-					ad_id := sp[0]
-					user := sp[1]
-					agent := sp[2]
-					if agent == "" {
-						agent = "unknown"
-					}
-					gender, age := decodeUserKey(sp[1])
-					if result[ad_id] == nil {
-						result[ad_id] = []ClickLog{}
-					}
-					data := ClickLog{ad_id, user, agent, gender, age}
-					result[ad_id] = append(result[ad_id], data)
-				}
-
-				req.ch <- result
-
-			case req := <- writelog:
-				path := getLogPath(req.id)
-
-				var f *os.File
-				f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
-				if err != nil {
-					panic(err)
-				}
-
-				fmt.Fprint(f, req.str)
-				f.Close()
-		}
-	}
-}
-
 func main() {
 	log.Println("started")
-	go loghandler()
 
 	router := mux.NewRouter()
 
