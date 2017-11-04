@@ -253,7 +253,7 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 
 	f, _ := asset.Open()
 	defer f.Close()
-	out, _ := os.Open("/home/isucon/assets/" + slot + "/" + id)
+	out, _ := os.Create("/home/isucon/assets/" + slot + "/" + id)
 	defer out.Close()
 	io.Copy(out, f)
 
