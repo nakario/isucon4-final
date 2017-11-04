@@ -88,6 +88,7 @@ func getDir(name string) string {
 	base_dir := "/tmp/go/"
 	path := base_dir + name
 	os.MkdirAll(path, 0777)
+	os.Chmod(path, 0777)
 	return path
 }
 
@@ -257,8 +258,18 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 
 	f, _ := asset.Open()
 	defer f.Close()
-	os.MkdirAll("/home/isucon/assets/" + slot, 0777)
-	out, _ := os.Create("/home/isucon/assets/" + slot + "/" + id)
+	err := os.MkdirAll("/home/isucon/assets/" + slot, 0777)
+	if err != nil {
+		log.Println("failed to mkdirall", err)
+	}
+	err = os.Chmod("/home/isucon/assets/" + slot, 0777)
+	if err != nil {
+		log.Println("failed to chmod", err)
+	}
+	out, err := os.Create("/home/isucon/assets/" + slot + "/" + id)
+	if err != nil {
+		log.Println("failed to create", err)
+	}
 	defer out.Close()
 	bs, err := ioutil.ReadAll(f)
 	if err != nil {
@@ -351,7 +362,6 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	data, err := ioutil.ReadFile("/home/isucon/assets/" + slot + "/" + id)
 	if err != nil {
 		log.Println("readfile err", err)
-		r.JSON(w, 404, map[string]string{"error": "not_found"})
 		return
 	}
 
@@ -574,6 +584,7 @@ func routePostInitialize(w http.ResponseWriter, req *http.Request) {
 	os.RemoveAll(path)
 	os.RemoveAll("/home/isucon/assets/")
 	os.MkdirAll("/home/isucon/assets/", 0777)
+	os.Chmod("/home/isucon/assets/", 0777)
 
 	w.WriteHeader(200)
 	w.Write(OK)
