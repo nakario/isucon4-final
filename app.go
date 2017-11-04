@@ -87,7 +87,7 @@ func init() {
 func getDir(name string) string {
 	base_dir := "/tmp/go/"
 	path := base_dir + name
-	os.MkdirAll(path, 0755)
+	os.MkdirAll(path, 0777)
 	return path
 }
 
@@ -351,6 +351,7 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	data, err := ioutil.ReadFile("/home/isucon/assets/" + slot + "/" + id)
 	if err != nil {
 		log.Println("readfile err", err)
+		r.JSON(w, 404, map[string]string{"error": "not_found"})
 		return
 	}
 
