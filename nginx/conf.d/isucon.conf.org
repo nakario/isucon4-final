@@ -1,0 +1,51 @@
+upstream app
+{
+  server 127.0.0.1:8080;
+}
+
+upstream one
+{
+  server webapp1:80;
+}
+
+server
+{
+  listen 80;
+
+  root /home/isucon/webapp/public;
+
+  location @app {
+    access_log /var/log/nginx/app.log;
+    proxy_set_header Host $http_host;
+    rewrite ^/(.+)/(.+)$ /slots/$1/ads/$2/asset break;
+    proxy_pass http://app;
+  }
+
+    location @back {
+    proxy_set_header Host $http_host;
+    proxy_pass http://app;
+  }
+
+  location ~* ^/slots/.+/ads/.+/asset$ {
+    proxy_set_header Host $http_host;
+    proxy_pass http://one;
+  }
+
+  location / {
+    proxy_set_header Host $http_host;
+    try_files $uri $uri/ @back;
+  }
+}
+
+
+server
+{
+  listen 10001;
+
+  root /home/isucon/assets;
+  client_body_temp_path /home/isucon/temp;
+  dav_methods PUT DELETE MKCOL COPY MOVE;
+  create_full_put_path on;
+  dav_access user:rw group:rw all:rw;
+}
+
