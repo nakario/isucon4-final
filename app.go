@@ -451,7 +451,7 @@ func routeGetAdRedirect(w http.ResponseWriter, req *http.Request) {
 	}
 	ua := req.Header.Get("User-Agent")
 
-	rd.SAdd(meKey(ad.Advertiser), fmt.Sprintf("%s\t%s\t%s", ad.Id, isuad, ua))
+	rd.RPush(meKey(ad.Advertiser), fmt.Sprintf("%s\t%s\t%s", ad.Id, isuad, ua))
 
 	http.Redirect(w, req, ad.Destination, http.StatusFound)
 }
@@ -490,7 +490,8 @@ func routeGetReport(w http.ResponseWriter, req *http.Request) {
 		report[ad["id"]] = data
 	}
 
-	reports, err := rd.SMembers(meKey(advrId)).Result()
+	length, _ := rd.LLen(meKey(advrId)).Result()
+	reports, err := rd.LRange(meKey(advrId), 0, length).Result()
 	if err != nil {
 		log.Println("members err", err)
 	}
@@ -555,7 +556,8 @@ func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 		reports[ad["id"]] = data
 	}
 
-	reports2, err := rd.SMembers(meKey(advrId)).Result()
+	lenght, _ := rd.LLen(mekey(advrId)).Result()
+	reports2, err := rd.LRange(meKey(advrId), 0, lenght).Result()
 	if err != nil {
 		log.Println("members err", err)
 	}
