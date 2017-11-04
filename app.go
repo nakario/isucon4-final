@@ -12,11 +12,11 @@ import (
 	"strings"
 	"syscall"
 	"log"
-	"net/http/pprof"
+	_ "net/http/pprof"
 
-	"github.com/go-martini/martini"
 	"github.com/go-redis/redis"
-	"github.com/martini-contrib/render"
+	"github.com/gorilla/mux"
+	render2 "github.com/unrolled/render"
 )
 
 type Ad struct {
@@ -60,6 +60,8 @@ type BreakdownReport struct {
 var (
 	rd *redis.Client
 	re = regexp.MustCompile("^bytes=(\\d*)-(\\d*)$")
+	r = render2.New()
+	OK = []byte("OK")
 )
 
 func init() {
@@ -232,12 +234,13 @@ func getLog(id string) map[string][]ClickLog {
 	return result
 }
 
-func routePostAd(r render.Render, req *http.Request, params martini.Params) {
+func routePostAd(w http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
 	slot := params["slot"]
 
 	advrId := advertiserId(req)
 	if advrId == "" {
-		r.Status(404)
+		w.WriteHeader(404)
 		return
 	}
 
@@ -287,36 +290,39 @@ func routePostAd(r render.Render, req *http.Request, params martini.Params) {
 	rd.RPush(slotKey(slot), id)
 	rd.SAdd(advertiserKey(advrId), key)
 
-	r.JSON(200, getAd(req, slot, id))
+	r.JSON(w,200, getAd(req, slot, id))
 }
 
-func routeGetAd(r render.Render, req *http.Request, params martini.Params) {
+func routeGetAd(w http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
 	slot := params["slot"]
 	ad := nextAd(req, slot)
 	if ad != nil {
-		r.Redirect("/slots/" + slot + "/ads/" + ad.Id)
+		http.Redirect(w, req, "/slots/" + slot + "/ads/" + ad.Id, http.StatusFound)
 	} else {
-		r.JSON(404, map[string]string{"error": "not_found"})
+		r.JSON(w,404, map[string]string{"error": "not_found"})
 	}
 }
 
-func routeGetAdWithId(r render.Render, req *http.Request, params martini.Params) {
+func routeGetAdWithId(w http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
 	slot := params["slot"]
 	id := params["id"]
 	ad := getAd(req, slot, id)
 	if ad != nil {
-		r.JSON(200, ad)
+		r.JSON(w,200, ad)
 	} else {
-		r.JSON(404, map[string]string{"error": "not_found"})
+		r.JSON(w,404, map[string]string{"error": "not_found"})
 	}
 }
 
-func routeGetAdAsset(r render.Render, res http.ResponseWriter, req *http.Request, params martini.Params) {
+func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
 	slot := params["slot"]
 	id := params["id"]
 	ad := getAd(req, slot, id)
 	if ad == nil {
-		r.JSON(404, map[string]string{"error": "not_found"})
+		r.JSON(w,404, map[string]string{"error": "not_found"})
 		return
 	}
 	content_type := "application/octet-stream"
@@ -324,19 +330,19 @@ func routeGetAdAsset(r render.Render, res http.ResponseWriter, req *http.Request
 		content_type = ad.Type
 	}
 
-	res.Header().Set("Content-Type", content_type)
+	w.Header().Set("Content-Type", content_type)
 	data, _ := rd.Get(assetKey(slot, id)).Bytes()
 
 	range_str := req.Header.Get("Range")
 	if range_str == "" {
-		r.Data(200, data)
+		r.Data(w,200, data)
 		return
 	}
 
 	m := re.FindAllStringSubmatch(range_str, -1)
 
 	if m == nil {
-		r.Status(416)
+		w.WriteHeader(416)
 		return
 	}
 
@@ -344,7 +350,7 @@ func routeGetAdAsset(r render.Render, res http.ResponseWriter, req *http.Request
 	tail_str := m[0][2]
 
 	if head_str == "" && tail_str == "" {
-		r.Status(416)
+		w.WriteHeader(416)
 		return
 	}
 
@@ -361,40 +367,42 @@ func routeGetAdAsset(r render.Render, res http.ResponseWriter, req *http.Request
 	}
 
 	if head < 0 || head >= len(data) || tail < 0 {
-		r.Status(416)
+		w.WriteHeader(416)
 		return
 	}
 
 	range_data := data[head:(tail + 1)]
 	content_range := fmt.Sprintf("bytes %d-%d/%d", head, tail, len(data))
-	res.Header().Set("Content-Range", content_range)
-	res.Header().Set("Content-Length", strconv.Itoa(len(range_data)))
+	w.Header().Set("Content-Range", content_range)
+	w.Header().Set("Content-Length", strconv.Itoa(len(range_data)))
 
-	r.Data(206, range_data)
+	r.Data(w, 206, range_data)
 }
 
-func routeGetAdCount(r render.Render, params martini.Params) {
+func routeGetAdCount(w http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
 	slot := params["slot"]
 	id := params["id"]
 	key := adKey(slot, id)
 
 	_, err := rd.Exists(key).Result()
 	if err == redis.Nil {
-		r.JSON(404, map[string]string{"error": "not_found"})
+		r.JSON(w, 404, map[string]string{"error": "not_found"})
 		return
 	}
 
 	rd.HIncrBy(key, "impressions", 1).Result()
-	r.Status(204)
+	w.WriteHeader(204)
 }
 
-func routeGetAdRedirect(req *http.Request, r render.Render, params martini.Params) {
+func routeGetAdRedirect(w http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
 	slot := params["slot"]
 	id := params["id"]
 	ad := getAd(req, slot, id)
 
 	if ad == nil {
-		r.JSON(404, map[string]string{"error": "not_found"})
+		r.JSON(w, 404, map[string]string{"error": "not_found"})
 		return
 	}
 
@@ -425,14 +433,14 @@ func routeGetAdRedirect(req *http.Request, r render.Render, params martini.Param
 	fmt.Fprintf(f, "%s\t%s\t%s\n", ad.Id, isuad, ua)
 	f.Close()
 
-	r.Redirect(ad.Destination)
+	http.Redirect(w, req, ad.Destination, http.StatusFound)
 }
 
-func routeGetReport(req *http.Request, r render.Render) {
+func routeGetReport(w http.ResponseWriter, req *http.Request) {
 	advrId := advertiserId(req)
 
 	if advrId == "" {
-		r.Status(401)
+		w.WriteHeader(401)
 		return
 	}
 
@@ -468,14 +476,14 @@ func routeGetReport(req *http.Request, r render.Render) {
 		}
 		report[adId].Clicks = len(clicks)
 	}
-	r.JSON(200, report)
+	r.JSON(w, 200, report)
 }
 
-func routeGetFinalReport(req *http.Request, r render.Render) {
+func routeGetFinalReport(w http.ResponseWriter, req *http.Request) {
 	advrId := advertiserId(req)
 
 	if advrId == "" {
-		r.Status(401)
+		w.WriteHeader(401)
 		return
 	}
 
@@ -532,10 +540,10 @@ func routeGetFinalReport(req *http.Request, r render.Render) {
 		reports[adId] = report
 	}
 
-	r.JSON(200, reports)
+	r.JSON(w, 200, reports)
 }
 
-func routePostInitialize() (int, string) {
+func routePostInitialize(w http.ResponseWriter, req *http.Request) {
 	keys, _ := rd.Keys("isu4:*").Result()
 	for i := range keys {
 		key := keys[i]
@@ -544,39 +552,27 @@ func routePostInitialize() (int, string) {
 	path := getDir("log")
 	os.RemoveAll(path)
 
-	return 200, "OK"
+	w.WriteHeader(200)
+	w.Write(OK)
 }
 
 func main() {
-	m := martini.Classic()
+	router := mux.NewRouter()
 
-	m.Use(martini.Static("../public"))
-	m.Use(render.Renderer(render.Options{
-		Layout: "layout",
-	}))
+	slots := router.PathPrefix("/slots/:slot").Subrouter()
+	slots.HandleFunc("/ads", routePostAd).Methods("POST")
+	slots.HandleFunc("/ad", routeGetAd).Methods("GET")
+	slots.HandleFunc("/ads/{id}", routeGetAdWithId).Methods("GET")
+	slots.HandleFunc("/ads/{id}/asset", routeGetAdAsset).Methods("GET")
+	slots.HandleFunc("/ads/{id}/count", routeGetAdCount).Methods("POST")
+	slots.HandleFunc("/ads/{id}/redirect", routeGetAdRedirect).Methods("GET")
 
-	m.Get("/debug/pprof", pprof.Index)
-	m.Get("/debug/pprof/cmdline", pprof.Cmdline)
-	m.Get("/debug/pprof/profile", pprof.Profile)
-	m.Get("/debug/pprof/symbol", pprof.Symbol)
-	m.Post("/debug/pprof/symbol", pprof.Symbol)
-	m.Get("/debug/pprof/block", pprof.Handler("block").ServeHTTP)
-	m.Get("/debug/pprof/heap", pprof.Handler("heap").ServeHTTP)
-	m.Get("/debug/pprof/goroutine", pprof.Handler("goroutine").ServeHTTP)
-	m.Get("/debug/pprof/threadcreate", pprof.Handler("threadcreate").ServeHTTP)
+	me := router.PathPrefix("/me").Subrouter()
+	me.HandleFunc("/report", routeGetReport).Methods("GET")
+	me.HandleFunc("/final_report", routeGetFinalReport).Methods("GET")
 
-	m.Group("/slots/:slot", func(r martini.Router) {
-		m.Post("/ads", routePostAd)
-		m.Get("/ad", routeGetAd)
-		m.Get("/ads/:id", routeGetAdWithId)
-		m.Get("/ads/:id/asset", routeGetAdAsset)
-		m.Post("/ads/:id/count", routeGetAdCount)
-		m.Get("/ads/:id/redirect", routeGetAdRedirect)
-	})
-	m.Group("/me", func(r martini.Router) {
-		m.Get("/report", routeGetReport)
-		m.Get("/final_report", routeGetFinalReport)
-	})
-	m.Post("/initialize", routePostInitialize)
-	http.ListenAndServe(":8080", m)
+	router.HandleFunc("/initialize", routePostInitialize).Methods("POST")
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("../public")))
+	http.Handle("/", router)
+	http.ListenAndServe(":8080", nil)
 }
