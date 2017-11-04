@@ -322,7 +322,7 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 
 	r.JSON(w,200, getAd(req, slot, id))
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 }
 
 func routeGetAd(w http.ResponseWriter, req *http.Request) {
