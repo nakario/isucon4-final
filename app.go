@@ -89,7 +89,10 @@ func getDir(name string) string {
 	base_dir := "/tmp/go/"
 	path := base_dir + name
 	os.MkdirAll(path, 0777)
-	os.Chmod(path, 0777)
+	err := os.Chmod(path, 0777)
+	if err != nil {
+		log.Println("fail chmod", err)
+	}
 	return path
 }
 
@@ -591,7 +594,10 @@ func routePostInitialize(w http.ResponseWriter, req *http.Request) {
 	os.RemoveAll(path)
 	os.RemoveAll("/home/isucon/assets/")
 	os.MkdirAll("/home/isucon/assets/", 0777)
-	os.Chmod("/home/isucon/assets/", 0777)
+	err := os.Chmod("/home/isucon/assets/", 0777)
+	if err != nil {
+		log.Println("Fail!! chmod", err)
+	}
 
 	w.WriteHeader(200)
 	w.Write(OK)
