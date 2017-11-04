@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	render2 "github.com/unrolled/render"
+	"io/ioutil"
 )
 
 type Ad struct {
@@ -253,11 +253,10 @@ func routePostAd(w http.ResponseWriter, req *http.Request) {
 
 	f, _ := asset.Open()
 	defer f.Close()
-	buf := bytes.NewBuffer(nil)
-	io.Copy(buf, f)
-	asset_data := string(buf.Bytes())
+	out, _ := os.Open("/home/isucon/assets/" + slot + "/" + id)
+	defer out.Close()
+	io.Copy(out, f)
 
-	rd.Set(assetKey(slot, id), asset_data, 0)
 	rd.RPush(slotKey(slot), id)
 	rd.SAdd(advertiserKey(advrId), key)
 
@@ -302,7 +301,7 @@ func routeGetAdAsset(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", content_type)
-	data, _ := rd.Get(assetKey(slot, id)).Bytes()
+	data, _ := ioutil.ReadFile("/home/isucon/assets/" + slot + "/" + id)
 
 	range_str := req.Header.Get("Range")
 	if range_str == "" {
